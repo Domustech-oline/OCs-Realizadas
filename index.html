@@ -424,7 +424,7 @@ textarea#massaTexto {
   <!-- ── Cadastro em Massa ── -->
   <div class="secaoExtra">
     <h3>📦 Cadastro em Massa</h3>
-    <button onclick="toggleMassa()" class="btnRoxo">Abrir Cadastro em Massa</button>
+    <button id="btnToggleMassa" onclick="toggleMassa()" class="btnRoxo">Abrir Cadastro em Massa</button>
 
     <div id="painelMassa" class="painelOculto" style="margin-top:10px;">
       <p style="font-size:12px;color:#555;">Cole abaixo uma linha para cada OC, seguindo exatamente o modelo (campos separados por ponto e vírgula <b>;</b>):</p>
@@ -448,12 +448,6 @@ Observações:
 
   <!-- ── Integração com Google Planilhas (automática, sem exibir link) ── -->
   <div class="secaoExtra">
-    <h3>☁️ Sincronização Online</h3>
-    <p style="font-size:12px;color:#555;margin:0 0 8px 0;">
-      Os dados são sincronizados automaticamente com a planilha na nuvem,
-      permitindo usar o app no computador e no celular com os mesmos
-      registros. Há também uma aba de backup na planilha.
-    </p>
     <button onclick="sincronizarAgora()" class="btnVerde">🔄 Sincronizar Agora</button>
     <div id="statusPlanilha" class="statusPlanilha"></div>
   </div>
@@ -526,9 +520,7 @@ function filtrarEquipes() {
 
 function selecionarEquipe(nome) {
   document.getElementById("eq").value = nome;
-  const container = document.getElementById("listaEquipesVisivel");
-  container.innerHTML = "";
-  container.classList.remove("mostrar");
+  document.getElementById("listaEquipesVisivel").classList.remove("mostrar");
 }
 
 function toggleNotificacao() {
@@ -1145,7 +1137,15 @@ function gerarPDF() {
 
 function toggleMassa() {
   const painel = document.getElementById("painelMassa");
-  painel.style.display = (painel.style.display === "block") ? "none" : "block";
+  const btn = document.getElementById("btnToggleMassa");
+  const abrir = painel.style.display !== "block";
+  painel.style.display = abrir ? "block" : "none";
+  if (btn) btn.innerText = abrir ? "Fechar Cadastro em Massa" : "Abrir Cadastro em Massa";
+  if (abrir) {
+    setTimeout(function() {
+      painel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  }
 }
 
 function parseDataBR(str) {
@@ -1344,4 +1344,16 @@ function sincronizarAgora() {
   });
 }
 
-document.addEventListener("click", function
+document.addEventListener("click", function(ev) {
+  const campo = document.getElementById("eq");
+  const container = document.getElementById("listaEquipesVisivel");
+  if (campo && container && ev.target !== campo && !container.contains(ev.target)) {
+    container.classList.remove("mostrar");
+  }
+});
+
+carregarLocal();
+carregarDaPlanilhaSilencioso(true);
+</script>
+</body>
+</html>
