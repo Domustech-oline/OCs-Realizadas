@@ -239,6 +239,117 @@ border-radius:0 0 20px 20px;
   .topoTabela { font-size: 9px; }
   input, select { width: 220px; }
 }
+
+/* ── Lista visível de equipes ── */
+.listaEquipesVisivel {
+  display: none;
+  max-width: 340px;
+  max-height: 130px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+  margin: -4px 0 8px 0;
+}
+
+.listaEquipesVisivel.mostrar { display: block; }
+
+.itemEquipe {
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.itemEquipe:last-child { border-bottom: none; }
+.itemEquipe:hover { background: #e3ebf7; }
+.itemEquipe.selecionada { background: #003A8F; color: #fff; }
+
+/* ── Busca de OC cadastrada ── */
+.buscaBox {
+  position: relative;
+  max-width: 340px;
+}
+
+.buscaBox input { margin-bottom: 4px; }
+
+/* ── Seções colapsáveis (massa / planilha) ── */
+.secaoExtra {
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.secaoExtra h3 {
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  color: #003A8F;
+}
+
+.painelOculto { display: none; }
+
+textarea#massaTexto {
+  width: 100%;
+  max-width: 100%;
+  min-height: 130px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: monospace;
+  resize: vertical;
+}
+
+.modeloBox {
+  background: #f0f4f8;
+  border: 1px dashed #999;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 11px;
+  font-family: monospace;
+  color: #333;
+  margin-bottom: 8px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.msgErro {
+  background: #fdecea;
+  border: 1px solid #e53935;
+  color: #b71c1c;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 12px;
+  margin-top: 8px;
+  white-space: pre-line;
+}
+
+.msgSucesso {
+  background: #e8f5e9;
+  border: 1px solid #2e7d32;
+  color: #1b5e20;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 12px;
+  margin-top: 8px;
+  white-space: pre-line;
+}
+
+.statusPlanilha {
+  font-size: 12px;
+  margin-top: 6px;
+  color: #555;
+}
+
+.btnSecundario { background: #607d8b; }
+.btnVerde { background: #1a7a1a; }
+.btnRoxo { background: #6a1b9a; }
+
+@media(min-width: 700px) {
+  .listaEquipesVisivel, .buscaBox { max-width: 220px; }
+}
 </style>
 </head>
 <body>
@@ -262,20 +373,8 @@ border-radius:0 0 20px 20px;
   <input id="dataConclusao" type="datetime-local">
 
   <label>Equipe</label>
-  <input id="eq" list="listaEquipes" placeholder="Selecione ou digite">
-  <datalist id="listaEquipes">
-    <option value="ENG1022"><option value="ENG1023"><option value="ENG1024">
-    <option value="ENG1025"><option value="ENG1026"><option value="ENG1027">
-    <option value="ENG1028"><option value="ENG1029"><option value="ENG1030">
-    <option value="ENG1031"><option value="ENG1032"><option value="ENG1033">
-    <option value="ENG1034"><option value="ENG1035"><option value="ENG2012">
-    <option value="ENG2013"><option value="ENG2014"><option value="ENG2015">
-    <option value="ENG2016"><option value="ENG2017"><option value="ENG2018">
-    <option value="ENG2019"><option value="ENG2020"><option value="ENG2022">
-    <option value="ENG5003"><option value="SEM EQUIPE">
-    <option value="LV"><option value="TP">
-    <option value="LV+TP"><option value="TP+RÇ">
-  </datalist>
+  <input id="eq" placeholder="Digite para filtrar ou clique na lista abaixo" oninput="filtrarEquipes()" onfocus="filtrarEquipes()" autocomplete="off">
+  <div id="listaEquipesVisivel" class="listaEquipesVisivel"></div>
 
   <label>UTD</label>
   <select id="utd">
@@ -313,7 +412,51 @@ border-radius:0 0 20px 20px;
   <button onclick="limpar()" style="background:#555;">Limpar Tudo</button>
   <button onclick="visualizar()" style="background:#1a7a1a;">Visualizar</button>
 
+  <div class="secaoExtra">
+    <h3>🔍 Buscar OC cadastrada</h3>
+    <div class="buscaBox">
+      <input id="buscarOc" placeholder="Digite o número da OC" oninput="render()">
+    </div>
+  </div>
+
   <div id="lista" class="card"></div>
+
+  <!-- ── Cadastro em Massa ── -->
+  <div class="secaoExtra">
+    <h3>📦 Cadastro em Massa</h3>
+    <button onclick="toggleMassa()" class="btnRoxo">Abrir Cadastro em Massa</button>
+
+    <div id="painelMassa" class="painelOculto" style="margin-top:10px;">
+      <p style="font-size:12px;color:#555;">Cole abaixo uma linha para cada OC, seguindo exatamente o modelo (campos separados por ponto e vírgula <b>;</b>):</p>
+      <div class="modeloBox">OC;EQUIPE;UTD;MES(AAAA-MM);DATA_CRIACAO(DD/MM/AAAA HH:MM);DATA_SOLICITACAO(DD/MM/AAAA HH:MM);DATA_CONCLUSAO(DD/MM/AAAA HH:MM);POSSUI_CI(SIM/NAO);QTD_CI;NOTIFICADA(SIM/NAO);NUMERO_NOTIFICACAO
+
+Exemplo:
+48004;ENG1022;GOIANA;2026-07;29/07/2026 08:00;29/07/2026 08:30;30/07/2026 17:00;SIM;3;SIM;NOT-12345
+48005;ENG2013;CARPINA;2026-07;;29/07/2026 09:10;;NAO;0;NAO;
+
+Observações:
+- Data de Criação e Data de Conclusão podem ficar vazias.
+- Use exatamente SIM ou NAO.
+- Se não houver notificação, deixe o último campo vazio.</div>
+      <textarea id="massaTexto" placeholder="Cole aqui as OCs, uma por linha, no formato do modelo acima..."></textarea>
+      <br>
+      <button onclick="processarMassa()" class="btnVerde">Processar Lote</button>
+      <button onclick="document.getElementById('massaTexto').value=''; document.getElementById('massaResultado').innerHTML='';" class="btnSecundario">Limpar Texto</button>
+      <div id="massaResultado"></div>
+    </div>
+  </div>
+
+  <!-- ── Integração com Google Planilhas (automática, sem exibir link) ── -->
+  <div class="secaoExtra">
+    <h3>☁️ Sincronização Online</h3>
+    <p style="font-size:12px;color:#555;margin:0 0 8px 0;">
+      Os dados são sincronizados automaticamente com a planilha na nuvem,
+      permitindo usar o app no computador e no celular com os mesmos
+      registros. Há também uma aba de backup na planilha.
+    </p>
+    <button onclick="sincronizarAgora()" class="btnVerde">🔄 Sincronizar Agora</button>
+    <div id="statusPlanilha" class="statusPlanilha"></div>
+  </div>
 </div>
 
 <div id="tela2">
@@ -357,6 +500,36 @@ const bases = {
   ENG2019:"CARPINA",  ENG2020:"IGARASSU", ENG2022:"CARPINA",
   ENG5003:"CARPINA"
 };
+
+const EQUIPES_LISTA = [
+  "ENG1022","ENG1023","ENG1024","ENG1025","ENG1026","ENG1027","ENG1028",
+  "ENG1029","ENG1030","ENG1031","ENG1032","ENG1033","ENG1034","ENG1035",
+  "ENG2012","ENG2013","ENG2014","ENG2015","ENG2016","ENG2017","ENG2018",
+  "ENG2019","ENG2020","ENG2022","ENG5003","SEM EQUIPE","LV","TP","LV+TP","TP+RÇ"
+];
+
+function filtrarEquipes() {
+  const termo = document.getElementById("eq").value.trim().toUpperCase();
+  const lista = EQUIPES_LISTA.filter(function(e) {
+    return e.toUpperCase().indexOf(termo) !== -1;
+  });
+  const container = document.getElementById("listaEquipesVisivel");
+  container.classList.add("mostrar");
+  if (lista.length === 0) {
+    container.innerHTML = '<div class="itemEquipe" style="color:#999;">Nenhuma equipe encontrada</div>';
+    return;
+  }
+  container.innerHTML = lista.map(function(e) {
+    return '<div class="itemEquipe" onclick="selecionarEquipe(\'' + e.replace(/'/g, "\\'") + '\')">' + e + '</div>';
+  }).join("");
+}
+
+function selecionarEquipe(nome) {
+  document.getElementById("eq").value = nome;
+  const container = document.getElementById("listaEquipesVisivel");
+  container.innerHTML = "";
+  container.classList.remove("mostrar");
+}
 
 function toggleNotificacao() {
   const val = document.getElementById("notificada").value;
@@ -522,6 +695,7 @@ function add() {
   salvarLocal();
   render();
   limparCampos();
+  enviarParaPlanilhaSilencioso();
 }
 
 function editar(i) {
@@ -550,6 +724,7 @@ function excluir(i) {
   dados.splice(i, 1);
   salvarLocal();
   render();
+  enviarParaPlanilhaSilencioso();
 }
 
 function limpar() {
@@ -561,6 +736,7 @@ function limpar() {
   limparCampos();
   salvarLocal();
   render();
+  enviarParaPlanilhaSilencioso();
 }
 
 function limparCampos() {
@@ -580,7 +756,26 @@ function render() {
     lista.innerHTML = '<p class="semDados">Nenhuma OC cadastrada.</p>';
     return;
   }
-  lista.innerHTML = dados.map(function(d, i) {
+
+  const buscaEl = document.getElementById("buscarOc");
+  const termoBusca = buscaEl ? buscaEl.value.trim().toUpperCase() : "";
+
+  const dadosFiltrados = termoBusca === ""
+    ? dados.map(function(d, i) { return { d: d, i: i }; })
+    : dados
+        .map(function(d, i) { return { d: d, i: i }; })
+        .filter(function(obj) {
+          return gerarNumOC(obj.d.oc, obj.d.mes).toUpperCase().indexOf(termoBusca) !== -1 ||
+                 String(obj.d.oc).toUpperCase().indexOf(termoBusca) !== -1;
+        });
+
+  if (dadosFiltrados.length === 0) {
+    lista.innerHTML = '<p class="semDados">Nenhuma OC encontrada para "' + termoBusca + '".</p>';
+    return;
+  }
+
+  lista.innerHTML = dadosFiltrados.map(function(obj) {
+    const d = obj.d, i = obj.i;
     return '<div class="listaItem">' +
       '<div>' +
         '<b>' + gerarNumOC(d.oc, d.mes) + '</b><br>' +
@@ -686,57 +881,6 @@ agora.toLocaleTimeString("pt-BR");
 
 '</div>' +
 
-    '<div class="cards">' +
-
-'<div class="cardResumo cardAzul">' +
-'<div class="icone">📋</div>' +
-'<div>Total OCs</div>' +
-'<div class="cardNumero">' + totalOc + '</div>' +
-'</div>' +
-
-'<div class="cardResumo cardVerde">' +
-'<div class="icone">💡</div>' +
-'<div>CI</div>' +
-'<div class="cardNumero">' + totalComCI + '</div>' +
-'</div>' +
-
-'<div class="cardResumo cardVermelho">' +
-'<div class="icone">📢</div>' +
-'<div>Notificadas</div>' +
-'<div class="cardNumero">' + totalNotificadas + '</div>' +
-'</div>' +
-
-'<div class="cardResumo cardLaranja">' +
-'<div class="icone">⏳</div>' +
-'<div>Sem Notificação</div>' +
-'<div class="cardNumero">' + totalNaoNotificadas + '</div>' +
-'</div>' +
-
-'<div class="cardResumo cardAmarelo">' +
-'<div class="icone">🏗️</div>' +
-'<div>TP-Obra</div>' +
-'<div class="cardNumero">' + (procCount.OBRA || 0) + '</div>' +
-'</div>' +
-
-'<div class="cardResumo cardRoxo">' +
-'<div class="icone">🔧</div>' +
-'<div>TP-Manutenção</div>' +
-'<div class="cardNumero">' + (procCount.MANUTENCAO || 0) + '</div>' +
-'</div>' +
-
-'<div class="cardResumo cardMarrom">' +
-'<div class="icone">📍</div>' +
-'<div>Base Carpina</div>' +
-'<div class="cardNumero">' + totalCarpina + '</div>' +
-'</div>' +
-
-'<div class="cardResumo cardCinza">' +
-'<div class="icone">📍</div>' +
-'<div>Base Igarassu</div>' +
-'<div class="cardNumero">' + totalIgarassu + '</div>' +
-'</div>' +
-
-'</div>' +
     '<div class="tabela">' +
       '<div class="linha topoTabela">' +
         '<div>OC</div><div>Equipe</div><div>Processo</div><div>Base</div>' +
@@ -995,7 +1139,209 @@ function gerarPDF() {
   doc.save(nomeArquivo);
 }
 
-carregarLocal();
-</script>
-</body>
-</html>
+/* ══════════════════════════════════════════
+   CADASTRO EM MASSA
+   ══════════════════════════════════════════ */
+
+function toggleMassa() {
+  const painel = document.getElementById("painelMassa");
+  painel.style.display = (painel.style.display === "block") ? "none" : "block";
+}
+
+function parseDataBR(str) {
+  // Espera "DD/MM/AAAA HH:MM" (hora opcional) e devolve valor no formato aceito por datetime-local (AAAA-MM-DDTHH:MM)
+  if (!str) return "";
+  str = str.trim();
+  if (str === "") return "";
+  const partes = str.split(" ");
+  const dataParte = partes[0];
+  const horaParte = partes[1] || "00:00";
+  const dm = dataParte.split("/");
+  if (dm.length !== 3) return null; // inválido
+  const [dia, mes, ano] = dm;
+  if (!dia || !mes || !ano) return null;
+  if (isNaN(dia) || isNaN(mes) || isNaN(ano)) return null;
+  const hm = horaParte.split(":");
+  if (hm.length < 2) return null;
+  const [hh, mm] = hm;
+  if (isNaN(hh) || isNaN(mm)) return null;
+  const pad = n => String(n).padStart(2, "0");
+  return ano + "-" + pad(mes) + "-" + pad(dia) + "T" + pad(hh) + ":" + pad(mm);
+}
+
+function processarMassa() {
+  const texto = document.getElementById("massaTexto").value;
+  const resultado = document.getElementById("massaResultado");
+  resultado.innerHTML = "";
+
+  const linhas = texto.split("\n").map(l => l.trim()).filter(l => l !== "");
+
+  if (linhas.length === 0) {
+    resultado.innerHTML = '<div class="msgErro">Cole ao menos uma linha no formato do modelo antes de processar.</div>';
+    return;
+  }
+
+  const erros = [];
+  const validos = [];
+
+  linhas.forEach(function(linha, idx) {
+    const numLinha = idx + 1;
+    const campos = linha.split(";").map(c => c.trim());
+
+    if (campos.length !== 11) {
+      erros.push("Linha " + numLinha + ": esperado 11 campos separados por ';', encontrado " + campos.length + ".");
+      return;
+    }
+
+    const [oc, eq, utd, mes, dataCriacaoStr, dataSolicStr, dataConclStr, possuiCi, qtdCiStr, notificada, numeroNotificacao] = campos;
+
+    if (!oc) { erros.push("Linha " + numLinha + ": número da OC vazio."); return; }
+    if (!eq) { erros.push("Linha " + numLinha + ": equipe vazia."); return; }
+    if (!utd) { erros.push("Linha " + numLinha + ": UTD vazia."); return; }
+    if (!mes || !/^\d{4}-\d{2}$/.test(mes)) { erros.push("Linha " + numLinha + ": mês de referência inválido, use AAAA-MM."); return; }
+    if (!dataSolicStr) { erros.push("Linha " + numLinha + ": data de solicitação é obrigatória."); return; }
+
+    const dataCriacao = parseDataBR(dataCriacaoStr);
+    if (dataCriacao === null) { erros.push("Linha " + numLinha + ": data de criação inválida, use DD/MM/AAAA HH:MM."); return; }
+
+    const dataSolic = parseDataBR(dataSolicStr);
+    if (dataSolic === null || dataSolic === "") { erros.push("Linha " + numLinha + ": data de solicitação inválida, use DD/MM/AAAA HH:MM."); return; }
+
+    const dataConcl = parseDataBR(dataConclStr);
+    if (dataConcl === null) { erros.push("Linha " + numLinha + ": data de conclusão inválida, use DD/MM/AAAA HH:MM."); return; }
+
+    const posCiUpper = (possuiCi || "").toUpperCase();
+    if (posCiUpper !== "SIM" && posCiUpper !== "NAO") { erros.push("Linha " + numLinha + ": campo 'Possui CI' deve ser SIM ou NAO."); return; }
+
+    const qtdCi = posCiUpper === "SIM" ? (Number(qtdCiStr) || 0) : 0;
+    if (posCiUpper === "SIM" && qtdCiStr && isNaN(Number(qtdCiStr))) {
+      erros.push("Linha " + numLinha + ": quantidade de CI deve ser um número.");
+      return;
+    }
+
+    const notifUpper = (notificada || "").toUpperCase();
+    if (notifUpper !== "SIM" && notifUpper !== "NAO") { erros.push("Linha " + numLinha + ": campo 'Notificada' deve ser SIM ou NAO."); return; }
+
+    const ocDuplicada = dados.some(item => item.oc === oc && item.mes === mes) ||
+                         validos.some(item => item.oc === oc && item.mes === mes);
+    if (ocDuplicada) { erros.push("Linha " + numLinha + ": OC " + oc + " já cadastrada para o mês " + mes + "."); return; }
+
+    validos.push({
+      id: gerarId(),
+      oc: oc,
+      eq: eq.toUpperCase(),
+      utd: utd.toUpperCase(),
+      mes: mes,
+      dataCriacao: dataCriacao,
+      data: dataSolic,
+      dataConclusao: dataConcl,
+      possuiCi: posCiUpper,
+      ci: qtdCi,
+      notificada: notifUpper,
+      numeroNotificacao: notifUpper === "SIM" ? numeroNotificacao : ""
+    });
+  });
+
+  let mensagem = "";
+
+  if (validos.length > 0) {
+    dados = dados.concat(validos);
+    salvarLocal();
+    render();
+    enviarParaPlanilhaSilencioso();
+    mensagem += '<div class="msgSucesso">✔ ' + validos.length + ' OC(s) cadastrada(s) com sucesso.</div>';
+  }
+
+  if (erros.length > 0) {
+    mensagem += '<div class="msgErro">✖ ' + erros.length + ' linha(s) com erro:\n' + erros.join("\n") + '</div>';
+  }
+
+  resultado.innerHTML = mensagem;
+
+  if (erros.length === 0 && validos.length > 0) {
+    document.getElementById("massaTexto").value = "";
+  }
+}
+
+/* ══════════════════════════════════════════
+   INTEGRAÇÃO COM GOOGLE PLANILHAS
+   (URL embutida no código-fonte — não é exibida na tela)
+   ══════════════════════════════════════════ */
+
+const URL_PLANILHA = "https://script.google.com/macros/s/AKfycbwP8hGgqMRCwntHzsaglAThApB__lShP5xYFwiZ-LTDgyt4n0bLV3SS2DuGIL9zkwaA4Q/exec";
+
+function statusPlanilhaTexto(msg) {
+  const el = document.getElementById("statusPlanilha");
+  if (el) el.innerText = msg;
+}
+
+/**
+ * Envia o estado atual de "dados" para a planilha, em segundo plano,
+ * sem travar a interface. Chamada automaticamente após qualquer
+ * alteração (adicionar, editar, excluir, limpar, cadastro em massa).
+ */
+function enviarParaPlanilhaSilencioso() {
+  if (!URL_PLANILHA) return;
+
+  fetch(URL_PLANILHA, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action: "salvar", dados: dados })
+  })
+    .then(function(resp) { return resp.json(); })
+    .then(function(resultado) {
+      if (resultado && resultado.status === "ok") {
+        statusPlanilhaTexto("☁️ Sincronizado com a planilha às " + new Date().toLocaleTimeString("pt-BR") + ".");
+      } else {
+        statusPlanilhaTexto("⚠ A planilha retornou um erro ao salvar.");
+      }
+    })
+    .catch(function(err) {
+      statusPlanilhaTexto("⚠ Sem conexão com a planilha no momento. Os dados continuam salvos neste dispositivo.");
+      console.error(err);
+    });
+}
+
+/**
+ * Busca os dados mais recentes da planilha.
+ * usadoNoCarregamentoInicial=true evita sobrescrever dados locais
+ * quando a planilha ainda está vazia.
+ */
+function carregarDaPlanilhaSilencioso(usadoNoCarregamentoInicial) {
+  if (!URL_PLANILHA) return;
+
+  return fetch(URL_PLANILHA + "?action=carregar")
+    .then(function(resp) { return resp.json(); })
+    .then(function(resultado) {
+      if (resultado && resultado.status === "ok" && Array.isArray(resultado.dados)) {
+        if (resultado.dados.length > 0) {
+          dados = resultado.dados;
+          salvarLocal();
+          render();
+          statusPlanilhaTexto("☁️ Dados atualizados a partir da planilha às " + new Date().toLocaleTimeString("pt-BR") + ".");
+        } else if (usadoNoCarregamentoInicial && dados.length > 0) {
+          // Planilha ainda vazia, mas já existem dados neste dispositivo: envia para inicializá-la.
+          enviarParaPlanilhaSilencioso();
+        }
+      } else {
+        statusPlanilhaTexto("⚠ A planilha retornou um erro ao carregar.");
+      }
+    })
+    .catch(function(err) {
+      statusPlanilhaTexto("⚠ Sem conexão com a planilha no momento. Usando os dados salvos neste dispositivo.");
+      console.error(err);
+    });
+}
+
+/**
+ * Botão manual "Sincronizar Agora": busca o mais recente da planilha
+ * e, em seguida, garante que o estado local também esteja refletido lá.
+ */
+function sincronizarAgora() {
+  statusPlanilhaTexto("Sincronizando...");
+  carregarDaPlanilhaSilencioso(false).then(function() {
+    enviarParaPlanilhaSilencioso();
+  });
+}
+
+document.addEventListener("click", function
